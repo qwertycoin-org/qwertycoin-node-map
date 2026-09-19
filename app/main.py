@@ -84,30 +84,30 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     assets_path = f"{base}/assets" or "/assets"
     app.mount(assets_path, StaticFiles(directory=STATIC_DIR / "assets"), name="assets")
 
-    @app.get(f"{base}/api/v1/map", include_in_schema=True)
+    @app.api_route(f"{base}/api/v1/map", methods=["GET", "HEAD"], include_in_schema=True)
     async def map_api():
         payload = collector.public_payload()
         if payload is None:
             return JSONResponse(collector.unavailable_payload(), status_code=503)
         return JSONResponse(payload)
 
-    @app.get(f"{base}/healthz", include_in_schema=False)
+    @app.api_route(f"{base}/healthz", methods=["GET", "HEAD"], include_in_schema=False)
     async def healthz():
         return {"status": "ok"}
 
-    @app.get(f"{base}/readyz", include_in_schema=False)
+    @app.api_route(f"{base}/readyz", methods=["GET", "HEAD"], include_in_schema=False)
     async def readyz():
         payload = collector.public_payload()
         if payload is None or payload["stale"] or payload["collector_status"] != "ok":
             return JSONResponse({"status": "not_ready"}, status_code=503)
         return {"status": "ready", "collected_at": payload["collected_at"]}
 
-    @app.get(f"{base}/", include_in_schema=False)
+    @app.api_route(f"{base}/", methods=["GET", "HEAD"], include_in_schema=False)
     async def index():
         return FileResponse(STATIC_DIR / "index.html")
 
     if base:
-        @app.get(base, include_in_schema=False)
+        @app.api_route(base, methods=["GET", "HEAD"], include_in_schema=False)
         async def base_redirect():
             return RedirectResponse(f"{base}/", status_code=308)
 

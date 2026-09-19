@@ -39,10 +39,13 @@ def test_root_api_ready_and_static_assets(settings):
     app.state.collector._status = "ok"
     client = TestClient(app)
     assert client.get("/").status_code == 200
+    assert client.head("/").status_code == 200
     api = client.get("/api/v1/map")
     assert api.status_code == 200
+    assert client.head("/api/v1/map").status_code == 200
     assert api.json()["summary"]["observed_public_ips"] == 1
     assert client.get("/readyz").status_code == 200
+    assert client.head("/readyz").status_code == 200
     assert client.get("/assets/node-map.js").status_code == 200
 
 
