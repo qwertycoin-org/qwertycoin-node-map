@@ -3,6 +3,7 @@ from __future__ import annotations
 import logging
 from contextlib import asynccontextmanager
 from pathlib import Path
+from typing import Literal
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
@@ -12,6 +13,7 @@ from fastapi.staticfiles import StaticFiles
 from .collector import Collector
 from .config import Settings
 from .geoip import GeoIpManager
+from .history import PeerHistoryStore
 from .rpc import QwcRpcClient
 from .snapshot import SnapshotStore
 
@@ -27,7 +29,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     rpc = QwcRpcClient(settings)
     geoip = GeoIpManager(settings)
     store = SnapshotStore(settings.snapshot_path, settings.source_fingerprint)
-    collector = Collector(settings, rpc, geoip, store)
+    history = PeerHistoryStore(settings.history_path, settings.history_key_path, settings.source_fingerprint)
+    collector = Collector(settings, rpc, geoip, store, history)
 
     @asynccontextmanager
     async def lifespan(_: FastAPI):
@@ -48,6 +51,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         lifespan=lifespan,
     )
     app.state.collector = collector
+    app.state.history = history
     app.state.settings = settings
 
     if settings.cors_allowed_origins:
@@ -89,6 +93,13 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         payload = collector.public_payload()
         if payload is None:
             return JSONResponse(collector.unavailable_payload(), status_code=503)
+        return JSONResponse(payload)
+
+    @app.api_route(f"{base}/api/v1/history", methods=["GET", "HEAD"], include_in_schema=True)
+    async def history_api(window: Literal["24h", "7d", "30d"] = "30d"):
+        payload = collector.history_payload(window)
+        if payload is None:
+            return JSONResponse(collector.history_unavailable_payload(window), status_code=503)
         return JSONResponse(payload)
 
     @app.api_route(f"{base}/healthz", methods=["GET", "HEAD"], include_in_schema=False)

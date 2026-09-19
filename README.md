@@ -12,10 +12,13 @@ The service polls the unrestricted RPC of an **existing** Qwertycoin daemon, agg
 - `get_info`, genesis header and `get_connections` over an internal Core RPC path;
 - local DB-IP City Lite MMDB with bounded monthly downloads and daily update checks;
 - atomic aggregate-only JSON snapshots in `/data`;
+- a 30-day SQLite history of keyed peer-presence tokens, countries and rounded coordinates; raw IPs are never persisted;
 - Leaflet 1.9.4 and Natural Earth country boundaries served locally, without tiles or CDNs;
 - root and configurable subpath operation for later Explorer integration.
 
-The main metric, **Observed peer IPs**, is the number of unique, globally routable IP addresses among handshake-complete connections in the latest successful collection. It is not a node census, a daily unique count, an EPoSE metric or proof that a peer accepts inbound connections.
+In the live `/api/v1/map` snapshot, **Observed peer IPs** is the number of unique, globally routable IP addresses among handshake-complete connections in the latest successful collection. It is not a node census, an EPoSE metric or proof that a peer accepts inbound connections.
+
+The public page defaults to the distinct public peer IPs observed during the last 30 days and can switch to 7 days or 24 hours. A peer seen in many five-minute collections is counted once per selected period. Internally, cross-collection deduplication uses an HMAC-SHA-256 token protected by a locally generated mode-`0600` key. Rows expire 30 days after their last observation; neither tokens nor individual first/last-seen records are exposed by the API.
 
 ## Quick start with an existing Docker daemon
 
@@ -78,6 +81,7 @@ To provision the database yourself, mount it at `GEOIP_DB_PATH` and set `GEOIP_A
 ## API and health semantics
 
 - `GET /api/v1/map`: one consistent, aggregate-only schema-v1 snapshot;
+- `GET /api/v1/history?window=30d|7d|24h`: distinct public peer IPs retained and re-aggregated for the selected period (default `30d`);
 - `GET /healthz`: process health; it performs no RPC request;
 - `GET /readyz`: HTTP 200 only with a recent successful snapshot and a functioning collector.
 
@@ -95,10 +99,10 @@ The test suite covers address normalization, IPv4-mapped IPv6, deduplication, ha
 
 ## Operations and rollback
 
-- Persistent state is confined to the Docker volume mounted at `/data`.
+- Persistent state is confined to the Docker volume mounted at `/data`. This includes the source-bound history database and its mode-`0600` HMAC key; preserve both together across container replacements.
 - The image runs as UID/GID 10001, with a read-only root filesystem, all Linux capabilities dropped and no Docker socket.
 - One worker owns one scheduler, so collector runs cannot multiply across workers.
-- To roll back, stop the replacement container and restart the prior image with the same `/data` volume. Aggregate snapshots remain compatible as schema version 1.
+- To roll back, stop the replacement container and restart the prior image with the same `/data` volume. Aggregate snapshots remain compatible as schema version 1. A first history-enabled deployment starts an honest partial window and fills the complete 30-day view over time; prior observations cannot be reconstructed.
 - A source URL/network/genesis change invalidates the old snapshot automatically instead of silently reusing it.
 
 For proxy and Explorer reuse examples, see [Explorer integration](docs/EXPLORER_INTEGRATION.md). Third-party licenses and attribution are documented in [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).

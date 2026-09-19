@@ -32,7 +32,9 @@ done
 
 curl --silent --fail http://127.0.0.1:18083/api/v1/map > "$data_dir/result.json"
 jq -e '.schema_version == 1 and .network == "mainnet" and .summary.observed_public_ips == 1 and .summary.excluded_connections == 1' "$data_dir/result.json" >/dev/null
-if grep -Eq '81\.2\.69\.160|peer_id|qwc-node-map-mock' "$data_dir/result.json"; then
+curl --silent --fail 'http://127.0.0.1:18083/api/v1/history?window=30d' > "$data_dir/history.json"
+jq -e '.schema_version == 1 and .scope == "single_observer_history" and .window == "30d" and .summary.observed_public_ips == 1' "$data_dir/history.json" >/dev/null
+if grep -Eq '81\.2\.69\.160|peer_id|qwc-node-map-mock' "$data_dir/result.json" "$data_dir/history.json"; then
   echo "Public API leaked raw collector data" >&2
   exit 1
 fi

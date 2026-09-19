@@ -8,10 +8,10 @@
     <meta name="description" content="A privacy-preserving geographic overview of peer IPs observed by one Qwertycoin node.">
     <link rel="icon" href="assets/qwertycoin-mark.svg" type="image/svg+xml">
     <link rel="stylesheet" href="assets/leaflet/leaflet.css">
-    <link rel="stylesheet" href="assets/node-map.css?v=qwc-lockup-1">
+    <link rel="stylesheet" href="assets/node-map.css?v=qwc-history-1">
     <script src="assets/leaflet/leaflet.js" defer></script>
     <script src="assets/node-map.js?v=qwc-light-1" defer></script>
-    <script src="assets/page.js?v=qwc-light-1" defer></script>
+    <script src="assets/page.js?v=qwc-history-1" defer></script>
   </head>
   <body>
     <a class="skip-link" href="#node-map">Skip to network map</a>
@@ -45,28 +45,35 @@
       <section class="hero" aria-labelledby="page-title">
         <p class="eyebrow">Mainnet · single observer</p>
         <h1 id="page-title">Where this node sees the network</h1>
-        <p class="lede">A current, privacy-preserving view of public peer IP locations observed by one Qwertycoin node.</p>
+        <p class="lede">A historical, privacy-preserving view of public peer IP locations observed by one Qwertycoin node.</p>
       </section>
 
+      <div class="history-tabs" role="tablist" aria-label="Observation period">
+        <button id="window-30d" type="button" role="tab" aria-selected="true" aria-controls="history-panel" data-history-window="30d">Last 30 days</button>
+        <button id="window-7d" type="button" role="tab" aria-selected="false" aria-controls="history-panel" tabindex="-1" data-history-window="7d">Last 7 days</button>
+        <button id="window-24h" type="button" role="tab" aria-selected="false" aria-controls="history-panel" tabindex="-1" data-history-window="24h">Last 24 hours</button>
+      </div>
+
+      <div id="history-panel" role="tabpanel" aria-labelledby="window-30d">
       <section class="status-panel" aria-live="polite">
         <div class="status-copy">
           <span id="status-dot" class="status-dot" aria-hidden="true"></span>
           <div>
-            <strong id="status-title">Loading network snapshot…</strong>
+            <strong id="status-title">Loading observation history…</strong>
             <p id="status-detail">The first complete collection can take a moment.</p>
           </div>
         </div>
         <dl class="freshness">
-          <div><dt>Last collected</dt><dd id="collected-at">—</dd></div>
+          <div><dt>Last observed</dt><dd id="collected-at">—</dd></div>
           <div><dt>GeoIP edition</dt><dd id="geoip-edition">—</dd></div>
         </dl>
       </section>
 
       <section class="metrics" aria-label="Network summary">
         <article class="metric-card">
-          <span class="metric-label">Observed peer IPs</span>
+          <span class="metric-label">Observed peer IPs in period</span>
           <strong id="peer-count" class="metric-value">—</strong>
-          <span class="metric-note">Unique, public and handshake-complete</span>
+          <span class="metric-note">Each public IP counted once per selected period</span>
         </article>
         <article class="metric-card">
           <span class="metric-label">Countries represented</span>
@@ -74,9 +81,9 @@
           <span class="metric-note">Approximate IP geolocation</span>
         </article>
         <article class="metric-card">
-          <span class="metric-label">Anonymous connections</span>
-          <strong id="anonymous-count" class="metric-value">—</strong>
-          <span class="metric-note">Tor or I2P; never mapped</span>
+          <span class="metric-label">History coverage</span>
+          <strong id="coverage-count" class="metric-value">—</strong>
+          <span id="coverage-note" class="metric-note">Accumulating aggregate observations</span>
         </article>
       </section>
 
@@ -89,7 +96,7 @@
           <div class="legend" aria-label="Marker legend"><span></span> Marker size represents IP count</div>
         </div>
         <div id="world-map" class="world-map" role="application" aria-label="Interactive world map of observed peer IP locations"></div>
-        <p id="map-empty" class="empty-state" hidden>No mappable public peer IPs were observed in this snapshot.</p>
+        <p id="map-empty" class="empty-state" hidden>No mappable public peer IPs were observed in this period.</p>
       </section>
 
       <section class="table-card" aria-labelledby="countries-heading">
@@ -111,8 +118,9 @@
       <aside class="method-card" aria-labelledby="method-heading">
         <h2 id="method-heading">How to read this map</h2>
         <p>Based on connections observed by one Qwertycoin node. This is a partial network view. IP locations are approximate; one IP does not necessarily represent one node.</p>
-        <p>Only public IPs from handshake-complete connections are aggregated. Private, local and non-routable addresses are excluded. Tor and I2P connections are counted separately and never geolocated.</p>
+        <p>Each public IP seen at least once in the selected period is counted once. Only a keyed, non-public deduplication token, first/last-seen times, country and rounded map point are retained for 30 days; raw IPs are never persisted.</p>
       </aside>
+      </div>
     </main>
 
     <footer>

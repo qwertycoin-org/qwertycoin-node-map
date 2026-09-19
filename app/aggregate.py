@@ -20,14 +20,19 @@ class AggregateResult:
     non_mappable_public_ips: int
 
 
-def aggregate_ips(
-    addresses: tuple[ipaddress.IPv4Address | ipaddress.IPv6Address, ...], resolver: GeoResolver
-) -> AggregateResult:
-    countries: Counter[tuple[str, str]] = Counter()
-    markers: Counter[tuple[str, float, float]] = Counter()
-    unknown_country = 0
-    non_mappable = 0
+@dataclass(frozen=True, slots=True)
+class LocatedPeer:
+    address: str
+    country_code: str
+    country_name: str
+    latitude: float | None
+    longitude: float | None
 
+
+def locate_ips(
+    addresses: tuple[ipaddress.IPv4Address | ipaddress.IPv6Address, ...], resolver: GeoResolver
+) -> tuple[LocatedPeer, ...]:
+    located: list[LocatedPeer] = []
     for address in addresses:
         record = resolver.lookup(str(address)) or {}
         country = record.get("country") if isinstance(record, dict) else None
@@ -37,24 +42,44 @@ def aggregate_ips(
         name = str(names.get("en", "")).strip()
         if len(code) != 2:
             code, name = "ZZ", "Unknown"
-            unknown_country += 1
         elif not name:
             name = code
-        countries[(code, name)] += 1
 
         location = record.get("location") if isinstance(record, dict) else None
         location = location if isinstance(location, dict) else {}
         latitude = location.get("latitude")
         longitude = location.get("longitude")
-        if code == "ZZ" or not isinstance(latitude, (int, float)) or not isinstance(longitude, (int, float)):
-            non_mappable += 1
-            continue
-        if not -90 <= latitude <= 90 or not -180 <= longitude <= 180:
-            non_mappable += 1
-            continue
-        markers[(code, round(float(latitude), 1), round(float(longitude), 1))] += 1
+        if (
+            code == "ZZ"
+            or not isinstance(latitude, (int, float))
+            or not isinstance(longitude, (int, float))
+            or not -90 <= latitude <= 90
+            or not -180 <= longitude <= 180
+        ):
+            latitude = longitude = None
+        else:
+            latitude = round(float(latitude), 1)
+            longitude = round(float(longitude), 1)
+        located.append(LocatedPeer(str(address), code, name, latitude, longitude))
+    return tuple(located)
 
-    total = len(addresses)
+
+def aggregate_locations(located: tuple[LocatedPeer, ...]) -> AggregateResult:
+    countries: Counter[tuple[str, str]] = Counter()
+    markers: Counter[tuple[str, float, float]] = Counter()
+    unknown_country = 0
+    non_mappable = 0
+
+    for peer in located:
+        countries[(peer.country_code, peer.country_name)] += 1
+        if peer.country_code == "ZZ":
+            unknown_country += 1
+        if peer.latitude is None or peer.longitude is None:
+            non_mappable += 1
+            continue
+        markers[(peer.country_code, peer.latitude, peer.longitude)] += 1
+
+    total = len(located)
     country_rows = [
         {"code": code, "name": name, "count": count, "share_percent": round(count * 100 / total, 1) if total else 0.0}
         for (code, name), count in sorted(countries.items(), key=lambda item: (-item[1], item[0][1]))
@@ -76,3 +101,8 @@ def aggregate_ips(
         non_mappable_public_ips=non_mappable,
     )
 
+
+def aggregate_ips(
+    addresses: tuple[ipaddress.IPv4Address | ipaddress.IPv6Address, ...], resolver: GeoResolver
+) -> AggregateResult:
+    return aggregate_locations(locate_ips(addresses, resolver))

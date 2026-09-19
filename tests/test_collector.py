@@ -3,6 +3,7 @@ from __future__ import annotations
 import pytest
 
 from app.collector import Collector
+from app.history import PeerHistoryStore
 from app.snapshot import SnapshotStore
 
 
@@ -39,10 +40,18 @@ class FakeGeoIp:
 @pytest.mark.asyncio
 async def test_failure_preserves_last_successful_snapshot(settings):
     rpc = FakeRpc()
-    collector = Collector(settings, rpc, FakeGeoIp(), SnapshotStore(settings.snapshot_path, settings.source_fingerprint))
+    history = PeerHistoryStore(settings.history_path, settings.history_key_path, settings.source_fingerprint)
+    collector = Collector(
+        settings,
+        rpc,
+        FakeGeoIp(),
+        SnapshotStore(settings.snapshot_path, settings.source_fingerprint),
+        history,
+    )
     assert await collector.collect_once() is True
     first = collector.public_payload()
     assert first["summary"]["observed_public_ips"] == 1
+    assert collector.history_payload("30d")["summary"]["observed_public_ips"] == 1
     collected_at = first["collected_at"]
 
     rpc.fail = True

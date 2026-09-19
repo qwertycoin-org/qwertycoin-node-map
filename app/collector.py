@@ -6,9 +6,10 @@ import logging
 from datetime import UTC, datetime
 from typing import Any
 
-from .aggregate import aggregate_ips
+from .aggregate import aggregate_locations, locate_ips
 from .config import Settings
 from .geoip import GeoIpManager
+from .history import PeerHistoryStore
 from .peers import normalize_connections
 from .rpc import QwcRpcClient
 from .snapshot import SnapshotStore
@@ -32,11 +33,13 @@ class Collector:
         rpc: QwcRpcClient,
         geoip: GeoIpManager,
         store: SnapshotStore,
+        history: PeerHistoryStore,
     ) -> None:
         self._settings = settings
         self._rpc = rpc
         self._geoip = geoip
         self._store = store
+        self._history = history
         self._snapshot = store.load()
         self._status = "starting"
         self._last_attempt_at: datetime | None = None
@@ -76,12 +79,14 @@ class Collector:
                 source = await asyncio.wait_for(self._rpc.validate_source(self._settings), timeout=30)
                 connections = await asyncio.wait_for(self._rpc.connections(), timeout=30)
                 normalized = normalize_connections(connections)
-                aggregated = aggregate_ips(normalized.public_ips, self._geoip)
+                located = locate_ips(normalized.public_ips, self._geoip)
+                aggregated = aggregate_locations(located)
+                collected_at = _utc_now()
                 snapshot = {
                     "schema_version": 1,
                     "network": source["network"],
                     "scope": "single_observer",
-                    "collected_at": _iso(_utc_now()),
+                    "collected_at": _iso(collected_at),
                     "last_attempt_at": _iso(attempted),
                     "collector_status": "ok",
                     "data_age_seconds": 0,
@@ -104,6 +109,7 @@ class Collector:
                     "countries": aggregated.countries,
                     "markers": aggregated.markers,
                 }
+                self._history.record(located, collected_at)
                 self._store.save(snapshot)
                 self._snapshot = snapshot
                 self._status = "ok"
@@ -137,6 +143,41 @@ class Collector:
         payload["geoip"]["last_update_error_at"] = self._geoip.last_update_error_at
         return payload
 
+    def history_payload(self, window: str) -> dict[str, Any] | None:
+        payload = self._history.public_payload(window)
+        if payload is None:
+            return None
+        payload["collector_status"] = self._status
+        payload["collector_error"] = self._last_error
+        payload["stale"] = payload["data_age_seconds"] > self._settings.stale_after_seconds
+        payload["poll_interval_seconds"] = self._settings.poll_interval_seconds
+        payload["geoip"] = {
+            "provider": "DB-IP City Lite",
+            "edition": self._geoip.edition,
+            "update_status": self._geoip.update_status,
+            "last_update_error_at": self._geoip.last_update_error_at,
+        }
+        return payload
+
+    def history_unavailable_payload(self, window: str) -> dict[str, Any]:
+        return {
+            "schema_version": 1,
+            "error": "unavailable",
+            "message": "No complete peer-history observation is available yet.",
+            "network": "mainnet",
+            "scope": "single_observer_history",
+            "window": window,
+            "collector_status": self._status,
+            "data_age_seconds": None,
+            "stale": True,
+            "summary": {
+                "observed_public_ips": None,
+                "represented_countries": None,
+                "unknown_country_ips": None,
+                "non_mappable_public_ips": None,
+            },
+        }
+
     def unavailable_payload(self) -> dict[str, Any]:
         return {
             "schema_version": 1,
@@ -157,4 +198,3 @@ class Collector:
                 "non_mappable_public_ips": None,
             },
         }
-
