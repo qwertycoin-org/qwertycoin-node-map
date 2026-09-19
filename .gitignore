@@ -1,0 +1,9 @@
+.env
+.env.host
+.venv/
+.pytest_cache/
+__pycache__/
+*.pyc
+coverage.xml
+htmlcov/
+test-results/

@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="color-scheme" content="dark">
+    <title>Qwertycoin Node Map</title>
+    <meta name="description" content="A privacy-preserving geographic overview of peer IPs observed by one Qwertycoin node.">
+    <link rel="icon" href="assets/qwertycoin-mark.svg" type="image/svg+xml">
+    <link rel="stylesheet" href="assets/leaflet/leaflet.css">
+    <link rel="stylesheet" href="assets/node-map.css">
+    <script src="assets/leaflet/leaflet.js" defer></script>
+    <script src="assets/node-map.js" defer></script>
+    <script src="assets/page.js" defer></script>
+  </head>
+  <body>
+    <a class="skip-link" href="#node-map">Skip to network map</a>
+    <header class="site-header">
+      <a class="brand" href="https://qwertycoin.org/" aria-label="Qwertycoin home">
+        <img src="assets/qwertycoin-mark.svg" width="42" height="42" alt="">
+        <span>Qwertycoin</span>
+      </a>
+      <span class="product-label">Node Map</span>
+    </header>
+
+    <main id="node-map" class="node-map-shell" tabindex="-1">
+      <section class="hero" aria-labelledby="page-title">
+        <p class="eyebrow">Mainnet · single observer</p>
+        <h1 id="page-title">Where this node sees the network</h1>
+        <p class="lede">A current, privacy-preserving view of public peer IP locations observed by one Qwertycoin node.</p>
+      </section>
+
+      <section class="status-panel" aria-live="polite">
+        <div class="status-copy">
+          <span id="status-dot" class="status-dot" aria-hidden="true"></span>
+          <div>
+            <strong id="status-title">Loading network snapshot…</strong>
+            <p id="status-detail">The first complete collection can take a moment.</p>
+          </div>
+        </div>
+        <dl class="freshness">
+          <div><dt>Last collected</dt><dd id="collected-at">—</dd></div>
+          <div><dt>GeoIP edition</dt><dd id="geoip-edition">—</dd></div>
+        </dl>
+      </section>
+
+      <section class="metrics" aria-label="Network summary">
+        <article class="metric-card">
+          <span class="metric-label">Observed peer IPs</span>
+          <strong id="peer-count" class="metric-value">—</strong>
+          <span class="metric-note">Unique, public and handshake-complete</span>
+        </article>
+        <article class="metric-card">
+          <span class="metric-label">Countries represented</span>
+          <strong id="country-count" class="metric-value">—</strong>
+          <span class="metric-note">Approximate IP geolocation</span>
+        </article>
+        <article class="metric-card">
+          <span class="metric-label">Anonymous connections</span>
+          <strong id="anonymous-count" class="metric-value">—</strong>
+          <span class="metric-note">Tor or I2P; never mapped</span>
+        </article>
+      </section>
+
+      <section class="map-card" aria-labelledby="map-heading">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">Approximate distribution</p>
+            <h2 id="map-heading">Observed peer origins</h2>
+          </div>
+          <div class="legend" aria-label="Marker legend"><span></span> Marker size represents IP count</div>
+        </div>
+        <div id="world-map" class="world-map" role="application" aria-label="Interactive world map of observed peer IP locations"></div>
+        <p id="map-empty" class="empty-state" hidden>No mappable public peer IPs were observed in this snapshot.</p>
+      </section>
+
+      <section class="table-card" aria-labelledby="countries-heading">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">Accessible data view</p>
+            <h2 id="countries-heading">Countries</h2>
+          </div>
+          <span id="country-total" class="table-total">—</span>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th scope="col">Country</th><th scope="col">Observed IPs</th><th scope="col">Share</th></tr></thead>
+            <tbody id="countries-body"><tr><td colspan="3">Loading snapshot…</td></tr></tbody>
+          </table>
+        </div>
+      </section>
+
+      <aside class="method-card" aria-labelledby="method-heading">
+        <h2 id="method-heading">How to read this map</h2>
+        <p>Based on connections observed by one Qwertycoin node. This is a partial network view. IP locations are approximate; one IP does not necessarily represent one node.</p>
+        <p>Only public IPs from handshake-complete connections are aggregated. Private, local and non-routable addresses are excluded. Tor and I2P connections are counted separately and never geolocated.</p>
+      </aside>
+    </main>
+
+    <footer>
+      <span>Qwertycoin Node Map</span>
+      <span>IP Geolocation by <a href="https://db-ip.com/" rel="external noopener">DB-IP</a></span>
+      <span>Map data: <a href="https://www.naturalearthdata.com/" rel="external noopener">Natural Earth</a></span>
+    </footer>
+  </body>
+</html>
