@@ -12,7 +12,7 @@ cleanup() {
 }
 trap cleanup EXIT
 
-install -d -m 0777 "$data_dir/geoip"
+install -d -m 0777 "$data_dir" "$data_dir/geoip"
 install -m 0644 tests/fixtures/GeoIP2-City-Test.mmdb "$data_dir/geoip/dbip-city-lite.mmdb"
 docker network create "$network" >/dev/null
 docker run --detach --name "$mock" --network "$network" --read-only --cap-drop ALL --security-opt no-new-privileges \
