@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta name="color-scheme" content="dark">
+    <meta name="color-scheme" content="light dark">
     <title>Qwertycoin Node Map</title>
     <meta name="description" content="A privacy-preserving geographic overview of peer IPs observed by one Qwertycoin node.">
     <link rel="icon" href="assets/qwertycoin-mark.svg" type="image/svg+xml">
@@ -16,11 +16,29 @@
   <body>
     <a class="skip-link" href="#node-map">Skip to network map</a>
     <header class="site-header">
-      <a class="brand" href="https://qwertycoin.org/" aria-label="Qwertycoin home">
-        <img src="assets/qwertycoin-mark.svg" width="42" height="42" alt="">
-        <span>Qwertycoin</span>
-      </a>
-      <span class="product-label">Node Map</span>
+      <nav class="nav" aria-label="Menu">
+        <a class="brand" href="https://qwertycoin.org/#home" aria-label="Qwertycoin home">
+          <img src="assets/qwertycoin-mark.svg" width="42" height="42" alt="">
+          <span>Qwertycoin</span>
+        </a>
+        <button class="nav-toggle" type="button" aria-controls="primary-menu" aria-expanded="false" data-nav-toggle>
+          <span class="nav-toggle-bar"></span>
+          <span class="nav-toggle-bar"></span>
+          <span class="nav-toggle-bar"></span>
+          <span class="visually-hidden">Menu</span>
+        </button>
+        <div class="nav-links" id="primary-menu" data-nav-menu>
+          <a href="https://qwertycoin.org/#technology">About</a>
+          <a href="https://qwertycoin.org/#epose">EPoSe</a>
+          <a href="https://qwertycoin.org/#mining">Mining</a>
+          <a href="https://qwertycoin.org/#network">Network</a>
+          <a href="#node-map" aria-current="page">Node Map</a>
+          <button class="theme-toggle" type="button" aria-pressed="false" data-theme-toggle>
+            <span>Theme</span><strong data-theme-label>Light</strong>
+          </button>
+          <a class="nav-wallet" href="https://wallet.qwertycoin.org/">Wallet</a>
+        </div>
+      </nav>
     </header>
 
     <main id="node-map" class="node-map-shell" tabindex="-1">

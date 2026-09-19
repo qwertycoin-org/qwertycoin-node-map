@@ -1,9 +1,68 @@
+(function () {
+  "use strict";
+  const root = document.documentElement;
+  const themeToggle = document.querySelector("[data-theme-toggle]");
+  const themeLabel = document.querySelector("[data-theme-label]");
+  const navToggle = document.querySelector("[data-nav-toggle]");
+  const navMenu = document.querySelector("[data-nav-menu]");
+
+  function storedTheme() {
+    try { return localStorage.getItem("qwc-node-map-theme"); }
+    catch (_) { return null; }
+  }
+
+  function applyTheme(theme, persist) {
+    const selected = theme === "dark" ? "dark" : "light";
+    root.dataset.theme = selected;
+    if (themeToggle) themeToggle.setAttribute("aria-pressed", String(selected === "dark"));
+    if (themeLabel) themeLabel.textContent = selected === "dark" ? "Dark" : "Light";
+    if (persist) {
+      try { localStorage.setItem("qwc-node-map-theme", selected); }
+      catch (_) { /* The selected theme still applies for this page view. */ }
+    }
+    window.dispatchEvent(new CustomEvent("qwc-theme-change", { detail: { theme: selected } }));
+  }
+
+  applyTheme(storedTheme(), false);
+  if (themeToggle) {
+    themeToggle.addEventListener("click", () => {
+      applyTheme(root.dataset.theme === "dark" ? "light" : "dark", true);
+    });
+  }
+
+  if (navToggle && navMenu) {
+    const closeMenu = () => {
+      navMenu.classList.remove("is-open");
+      navToggle.setAttribute("aria-expanded", "false");
+    };
+    navToggle.addEventListener("click", () => {
+      const open = navMenu.classList.toggle("is-open");
+      navToggle.setAttribute("aria-expanded", String(open));
+    });
+    navMenu.addEventListener("click", (event) => {
+      if (event.target instanceof HTMLAnchorElement) closeMenu();
+    });
+    window.addEventListener("resize", () => {
+      if (window.matchMedia("(min-width: 1201px)").matches) closeMenu();
+    });
+    document.addEventListener("keydown", (event) => {
+      if (event.key !== "Escape" || !navMenu.classList.contains("is-open")) return;
+      closeMenu();
+      navToggle.focus();
+    });
+  }
+})();
+
 (async function () {
   "use strict";
   const byId = (id) => document.getElementById(id);
   const apiUrl = new URL("api/v1/map", document.baseURI).href;
   const mapEmpty = byId("map-empty");
   let mapComponent;
+
+  window.addEventListener("qwc-theme-change", () => {
+    if (mapComponent && mapComponent.setTheme) mapComponent.setTheme();
+  });
 
   function setText(id, value) { byId(id).textContent = value; }
   function formatAge(seconds) {
