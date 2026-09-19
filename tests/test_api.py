@@ -42,6 +42,7 @@ def test_root_api_ready_and_static_assets(settings):
     assert root.status_code == 200
     assert 'class="site-header"' in root.text
     assert 'href="https://qwertycoin.org/#technology"' in root.text
+    assert '<span class="brand-lockup"><strong>Qwertycoin</strong><span>Node Map</span></span>' in root.text
     assert 'data-theme-toggle' in root.text
     assert 'content="light dark"' in root.text
     assert client.head("/").status_code == 200

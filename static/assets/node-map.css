@@ -151,6 +151,30 @@ button { font: inherit; }
   text-transform: uppercase;
 }
 
+.brand-lockup {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.1rem;
+  line-height: 1;
+}
+
+.brand-lockup strong {
+  font-family: var(--font-display);
+  font-size: clamp(1.05rem, 1.5vw, 1.45rem);
+  font-weight: 900;
+  letter-spacing: 0;
+}
+
+.brand-lockup span {
+  color: var(--color-muted);
+  font-family: var(--font-sans);
+  font-size: 0.65rem;
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
 .brand img {
   display: block;
   width: 42px;
@@ -573,7 +597,7 @@ footer a { color: #ffffff; }
 }
 
 @media (max-width: 760px) {
-  .brand span { font-size: 0.94rem; }
+  .brand-lockup strong { font-size: 0.94rem; }
   .node-map-shell {
     padding-top: 3.5rem;
     padding-bottom: 3rem;
