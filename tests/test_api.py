@@ -1,0 +1,62 @@
+from dataclasses import replace
+from datetime import UTC, datetime
+
+from fastapi.testclient import TestClient
+
+from app.main import create_app
+
+
+def snapshot():
+    return {
+        "schema_version": 1,
+        "network": "mainnet",
+        "scope": "single_observer",
+        "collected_at": datetime.now(UTC).isoformat().replace("+00:00", "Z"),
+        "last_attempt_at": datetime.now(UTC).isoformat().replace("+00:00", "Z"),
+        "collector_status": "ok",
+        "data_age_seconds": 0,
+        "stale": False,
+        "poll_interval_seconds": 300,
+        "geoip": {"provider": "DB-IP City Lite", "edition": "2099-01", "update_status": "current", "last_update_error_at": None},
+        "summary": {"observed_public_ips": 1, "represented_countries": 1, "unknown_country_ips": 0, "non_mappable_public_ips": 0, "anonymous_connections": 0, "excluded_connections": 0},
+        "countries": [{"code": "US", "name": "United States", "count": 1, "share_percent": 100.0}],
+        "markers": [{"country_code": "US", "latitude": 37.4, "longitude": -122.1, "count": 1}],
+    }
+
+
+def test_unavailable_contract_and_security_headers(settings):
+    app = create_app(settings)
+    response = TestClient(app).get("/api/v1/map")
+    assert response.status_code == 503
+    assert response.json()["summary"]["observed_public_ips"] is None
+    assert response.headers["x-content-type-options"] == "nosniff"
+    assert response.headers["cache-control"].startswith("public")
+
+
+def test_root_api_ready_and_static_assets(settings):
+    app = create_app(settings)
+    app.state.collector._snapshot = snapshot()
+    app.state.collector._status = "ok"
+    client = TestClient(app)
+    assert client.get("/").status_code == 200
+    assert client.head("/").status_code == 200
+    api = client.get("/api/v1/map")
+    assert api.status_code == 200
+    assert client.head("/api/v1/map").status_code == 200
+    assert api.json()["summary"]["observed_public_ips"] == 1
+    assert client.get("/readyz").status_code == 200
+    assert client.head("/readyz").status_code == 200
+    assert client.get("/assets/node-map.js").status_code == 200
+
+
+def test_subpath_routes_and_redirect(settings):
+    app = create_app(replace(settings, public_base_path="/node-map"))
+    app.state.collector._snapshot = snapshot()
+    app.state.collector._status = "ok"
+    client = TestClient(app)
+    redirect = client.get("/node-map", follow_redirects=False)
+    assert redirect.status_code == 308
+    assert redirect.headers["location"] == "/node-map/"
+    assert client.get("/node-map/").status_code == 200
+    assert client.get("/node-map/api/v1/map").status_code == 200
+    assert client.get("/node-map/assets/node-map.css").status_code == 200
