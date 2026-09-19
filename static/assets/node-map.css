@@ -317,6 +317,51 @@ button { font: inherit; }
   line-height: 1.55;
 }
 
+.history-tabs {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 0.55rem;
+  margin-bottom: 1.25rem;
+  padding: 0.45rem;
+  border: 2px solid var(--color-line);
+  border-radius: 8px;
+  background: var(--color-card);
+  box-shadow: var(--shadow-card);
+}
+
+.history-tabs button {
+  min-height: 44px;
+  padding: 0.65rem 1rem;
+  border: 2px solid transparent;
+  border-radius: 4px;
+  color: var(--color-muted);
+  background: transparent;
+  font-family: var(--font-display);
+  font-size: 0.78rem;
+  font-weight: 900;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.history-tabs button:hover,
+.history-tabs button:focus-visible {
+  border-color: var(--color-line);
+  color: var(--color-text);
+}
+
+.history-tabs button[aria-selected="true"] {
+  border-color: #141414;
+  color: #141414;
+  background: var(--color-accent);
+  box-shadow: 3px 3px 0 #141414;
+}
+
+#history-panel[aria-busy="true"] .map-card,
+#history-panel[aria-busy="true"] .table-card {
+  opacity: 0.72;
+}
+
 .status-panel,
 .metric-card,
 .map-card,
@@ -603,6 +648,12 @@ footer a { color: #ffffff; }
     padding-bottom: 3rem;
   }
   .hero h1 { font-size: clamp(2.75rem, 14vw, 4.4rem); }
+  .history-tabs {
+    display: grid;
+    width: 100%;
+    grid-template-columns: 1fr;
+  }
+  .history-tabs button { width: 100%; }
   .metrics { grid-template-columns: 1fr; }
   .metric-card { min-height: 135px; }
   .status-panel,

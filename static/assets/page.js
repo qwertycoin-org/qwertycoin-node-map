@@ -56,9 +56,11 @@
 (async function () {
   "use strict";
   const byId = (id) => document.getElementById(id);
-  const apiUrl = new URL("api/v1/map", document.baseURI).href;
   const mapEmpty = byId("map-empty");
+  const historyPanel = byId("history-panel");
+  const tabs = Array.from(document.querySelectorAll("[data-history-window]"));
   let mapComponent;
+  let requestController;
 
   window.addEventListener("qwc-theme-change", () => {
     if (mapComponent && mapComponent.setTheme) mapComponent.setTheme();
@@ -68,7 +70,13 @@
   function formatAge(seconds) {
     if (seconds < 60) return `${seconds}s ago`;
     if (seconds < 3600) return `${Math.floor(seconds / 60)}m ago`;
-    return `${Math.floor(seconds / 3600)}h ago`;
+    if (seconds < 86400) return `${Math.floor(seconds / 3600)}h ago`;
+    return `${Math.floor(seconds / 86400)}d ago`;
+  }
+  function formatCoverage(seconds) {
+    if (seconds < 3600) return `${Math.floor(seconds / 60)}m`;
+    if (seconds < 86400) return `${Math.floor(seconds / 3600)}h`;
+    return `${Math.floor(seconds / 86400)}d`;
   }
   function status(kind, title, detail) {
     byId("status-dot").className = `status-dot ${kind}`;
@@ -99,26 +107,78 @@
     const summary = data.summary;
     setText("peer-count", summary.observed_public_ips.toLocaleString("en"));
     setText("country-count", summary.represented_countries.toLocaleString("en"));
-    setText("anonymous-count", summary.anonymous_connections.toLocaleString("en"));
+    setText("coverage-count", formatCoverage(data.coverage_seconds));
+    setText("coverage-note", data.partial_window ? "History is still accumulating" : "Complete selected observation window");
     setText("collected-at", formatAge(data.data_age_seconds));
     setText("geoip-edition", data.geoip.edition);
     renderCountries(data.countries, summary.observed_public_ips);
     mapComponent.render(data.markers);
     mapEmpty.hidden = data.markers.length !== 0;
-    if (data.stale) status("error", "Snapshot is stale", `Last complete collection was ${formatAge(data.data_age_seconds)}. Displaying the last valid data.`);
-    else if (data.collector_status === "error") status("error", "Update failed", "Displaying the last valid snapshot while the collector retries automatically.");
-    else status("ok", "Current snapshot", `Collected ${formatAge(data.data_age_seconds)} · refresh interval ${Math.round(data.poll_interval_seconds / 60)} minutes`);
+    if (data.stale) status("error", "History update is stale", `Last complete collection was ${formatAge(data.data_age_seconds)}. Displaying retained observations.`);
+    else if (data.collector_status === "error") status("error", "Update failed", "Displaying retained observations while the collector retries automatically.");
+    else if (data.partial_window) status("ok", "History is accumulating", `Tracking started ${formatAge(data.coverage_seconds)} · each public IP is counted once in this period`);
+    else status("ok", "Historical view is current", `Updated ${formatAge(data.data_age_seconds)} · each public IP is counted once in this period`);
   }
+
+  function selectTab(tab) {
+    tabs.forEach((candidate) => {
+      const selected = candidate === tab;
+      candidate.setAttribute("aria-selected", String(selected));
+      candidate.tabIndex = selected ? 0 : -1;
+    });
+    historyPanel.setAttribute("aria-labelledby", tab.id);
+  }
+
+  async function loadWindow(tab) {
+    selectTab(tab);
+    if (requestController) requestController.abort();
+    requestController = new AbortController();
+    historyPanel.setAttribute("aria-busy", "true");
+    status("", "Loading observation history…", "Reading retained aggregate data; no new Core RPC request is triggered.");
+    try {
+      const url = new URL("api/v1/history", document.baseURI);
+      url.searchParams.set("window", tab.dataset.historyWindow);
+      const response = await fetch(url, {
+        headers: { Accept: "application/json" },
+        credentials: "same-origin",
+        signal: requestController.signal,
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.message || "History unavailable");
+      render(data);
+    } catch (error) {
+      if (error.name === "AbortError") return;
+      status("error", "Node history unavailable", "No complete historical observation is available yet. The collector will retry automatically.");
+      byId("countries-body").innerHTML = '<tr><td colspan="3">No complete history is available.</td></tr>';
+      mapComponent.render([]);
+      mapEmpty.hidden = false;
+      mapEmpty.textContent = "The map will appear after the first successful historical observation.";
+    } finally {
+      historyPanel.removeAttribute("aria-busy");
+    }
+  }
+
   try {
     mapComponent = await window.QwertycoinNodeMap.mount(byId("world-map"), {});
-    const response = await fetch(apiUrl, { headers: { Accept: "application/json" }, credentials: "same-origin" });
-    const data = await response.json();
-    if (!response.ok) throw new Error(data.message || "Snapshot unavailable");
-    render(data);
-  } catch (error) {
-    status("error", "Node map unavailable", "No complete network snapshot is available yet. The collector will retry automatically.");
-    byId("countries-body").innerHTML = '<tr><td colspan="3">No complete snapshot is available.</td></tr>';
+  } catch (_) {
+    status("error", "Node map unavailable", "The local map assets could not be initialized.");
+    byId("countries-body").innerHTML = '<tr><td colspan="3">The map could not be initialized.</td></tr>';
     mapEmpty.hidden = false;
-    mapEmpty.textContent = "The map will appear after the first successful collection.";
+    return;
   }
+  tabs.forEach((tab, index) => {
+    tab.addEventListener("click", () => loadWindow(tab));
+    tab.addEventListener("keydown", (event) => {
+      if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)) return;
+      event.preventDefault();
+      let targetIndex = index;
+      if (event.key === "ArrowLeft") targetIndex = (index - 1 + tabs.length) % tabs.length;
+      if (event.key === "ArrowRight") targetIndex = (index + 1) % tabs.length;
+      if (event.key === "Home") targetIndex = 0;
+      if (event.key === "End") targetIndex = tabs.length - 1;
+      tabs[targetIndex].focus();
+      loadWindow(tabs[targetIndex]);
+    });
+  });
+  await loadWindow(tabs[0]);
 })();

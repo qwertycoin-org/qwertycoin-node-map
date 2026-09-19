@@ -80,6 +80,14 @@ class Settings:
         return self.data_dir / "snapshot-v1.json"
 
     @property
+    def history_path(self) -> Path:
+        return self.data_dir / f"peer-history-v1-{self.source_fingerprint[:16]}.sqlite3"
+
+    @property
+    def history_key_path(self) -> Path:
+        return self.data_dir / "peer-history-hmac-key-v1"
+
+    @property
     def source_fingerprint(self) -> str:
         parsed = urlsplit(self.rpc_base_url)
         safe_url = urlunsplit((parsed.scheme, parsed.netloc, parsed.path.rstrip("/"), "", ""))
