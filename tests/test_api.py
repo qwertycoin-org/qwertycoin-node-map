@@ -38,7 +38,12 @@ def test_root_api_ready_and_static_assets(settings):
     app.state.collector._snapshot = snapshot()
     app.state.collector._status = "ok"
     client = TestClient(app)
-    assert client.get("/").status_code == 200
+    root = client.get("/")
+    assert root.status_code == 200
+    assert 'class="site-header"' in root.text
+    assert 'href="https://qwertycoin.org/#technology"' in root.text
+    assert 'data-theme-toggle' in root.text
+    assert 'content="light dark"' in root.text
     assert client.head("/").status_code == 200
     api = client.get("/api/v1/map")
     assert api.status_code == 200
